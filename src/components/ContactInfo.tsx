@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, User, Phone, Calendar, Info } from 'lucide-react';
+import { X, User, Phone, Calendar, Info, Building2, Tag, Star, AlignLeft } from 'lucide-react';
 import { Conversation } from '../hooks/useConversations';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -44,30 +44,74 @@ export const ContactInfo: React.FC<ContactInfoProps> = ({ conversation, onClose,
                         <Info className="w-4 h-4" />
                         Acerca de
                     </h3>
-                    <div className="space-y-4">
+                    {conversation.contact.company && (
                         <div>
                             <p className="text-sm text-gray-500 mb-1 flex items-center gap-2">
-                                <Calendar className="w-4 h-4" />
-                                Cliente desde
+                                <Building2 className="w-4 h-4" />
+                                Empresa
                             </p>
-                            <p className="text-gray-800">
-                                {conversation.contact.createdAt
-                                    ? format(new Date(conversation.contact.createdAt), "dd 'de' MMMM, yyyy", { locale: es })
-                                    : 'Desconocido'}
+                            <p className="text-gray-800 font-medium">
+                                {conversation.contact.company}
                             </p>
                         </div>
-                    </div>
-                </div>
+                    )}
 
-                {/* Actions */}
-                <div className="p-4 mt-4 space-y-3">
-                    <button className="w-full text-red-500 font-medium p-3 bg-red-50 hover:bg-red-100 rounded-lg flex justify-center items-center transition-colors">
-                        Reportar contacto
-                    </button>
-                    <button className="w-full text-gray-700 font-medium p-3 bg-gray-100 hover:bg-gray-200 rounded-lg flex justify-center items-center transition-colors">
-                        Bloquear contacto
-                    </button>
+                    <div>
+                        <p className="text-sm text-gray-500 mb-1 flex items-center gap-2">
+                            <Tag className="w-4 h-4" />
+                            Estado de Interés
+                        </p>
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 capitalize">
+                            {conversation.contact.interestStatus || 'new'}
+                        </span>
+                    </div>
+
+                    {conversation.contact.recommendedService && (
+                        <div>
+                            <p className="text-sm text-gray-500 mb-1 flex items-center gap-2">
+                                <Star className="w-4 h-4" />
+                                Servicio Recomendado
+                            </p>
+                            <p className="text-gray-800">
+                                {conversation.contact.recommendedService}
+                            </p>
+                        </div>
+                    )}
+
+                    <div>
+                        <p className="text-sm text-gray-500 mb-1 flex items-center gap-2">
+                            <Calendar className="w-4 h-4" />
+                            Cliente desde
+                        </p>
+                        <p className="text-gray-800">
+                            {conversation.contact.createdAt
+                                ? format(new Date(conversation.contact.createdAt), "dd 'de' MMMM, yyyy", { locale: es })
+                                : 'Desconocido'}
+                        </p>
+                    </div>
+
+                    {conversation.contact.notes && (
+                        <div>
+                            <p className="text-sm text-gray-500 mb-1 flex items-center gap-2">
+                                <AlignLeft className="w-4 h-4" />
+                                Notas
+                            </p>
+                            <p className="text-gray-800 text-sm bg-gray-50 p-3 rounded-lg border border-gray-100 italic">
+                                {conversation.contact.notes}
+                            </p>
+                        </div>
+                    )}
                 </div>
+            </div>
+
+            {/* Actions */}
+            <div className="p-4 mt-4 space-y-3">
+                <button className="w-full text-red-500 font-medium p-3 bg-red-50 hover:bg-red-100 rounded-lg flex justify-center items-center transition-colors">
+                    Reportar contacto
+                </button>
+                <button className="w-full text-gray-700 font-medium p-3 bg-gray-100 hover:bg-gray-200 rounded-lg flex justify-center items-center transition-colors">
+                    Bloquear contacto
+                </button>
             </div>
         </div>
     );

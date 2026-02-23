@@ -7,6 +7,10 @@ export interface Contact {
     id: string;
     phone: string;
     name: string;
+    company?: string | null;
+    interestStatus: string;
+    recommendedService?: string | null;
+    notes?: string | null;
 }
 
 export interface Message {
