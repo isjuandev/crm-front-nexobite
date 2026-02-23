@@ -24,6 +24,11 @@ export const conversationService = {
     updateStatus: async (conversationId: string, status: 'open' | 'closed') => {
         const response = await api.put(`/conversations/${conversationId}/status`, { status });
         return response.data;
+    },
+
+    toggleBot: async (conversationId: string, botEnabled: boolean) => {
+        const response = await api.put(`/conversations/${conversationId}/bot`, { botEnabled });
+        return response.data;
     }
 };
 

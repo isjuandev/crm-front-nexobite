@@ -24,6 +24,7 @@ export interface Conversation {
     id: string;
     contactId: string;
     status: 'open' | 'closed';
+    botEnabled: boolean;
     lastMessageAt: string;
     contact: Contact;
     messages: Message[];
@@ -161,6 +162,22 @@ export const useConversations = () => {
         fetchConversations();
     }, [fetchConversations]);
 
+    // Alternar el estado del Bot
+    const toggleBotMode = async (conversationId: string, botEnabled: boolean) => {
+        try {
+            await conversationService.toggleBot(conversationId, botEnabled);
+            if (activeConversation?.id === conversationId) {
+                setActiveConversation({ ...activeConversation, botEnabled });
+            }
+            // Update in the listing cache
+            setConversations(prev => prev.map(c =>
+                c.id === conversationId ? { ...c, botEnabled } : c
+            ));
+        } catch (error) {
+            console.error('Error toggling bot:', error);
+        }
+    };
+
     return {
         conversations,
         activeConversation,
@@ -169,6 +186,7 @@ export const useConversations = () => {
         filter,
         setFilter,
         selectConversation,
-        setMessages
+        setMessages,
+        toggleBotMode
     };
 };

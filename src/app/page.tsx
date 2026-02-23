@@ -15,6 +15,7 @@ export default function Home() {
     filter,
     setFilter,
     selectConversation,
+    toggleBotMode,
   } = useConversations();
 
   const [showInfo, setShowInfo] = useState(false);
@@ -51,6 +52,7 @@ export default function Home() {
         <ChatWindow
           activeConversation={activeConversation}
           messages={messages}
+          onToggleBot={toggleBotMode}
         />
       </div>
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Phone, MoreVertical, Search, Paperclip, Smile } from 'lucide-react';
+import { Send, Phone, MoreVertical, Search, Paperclip, Smile, Bot } from 'lucide-react';
 import { Conversation, Message } from '../hooks/useConversations';
 import { messageService } from '../services/api';
 import { MessageBubble } from './MessageBubble';
@@ -7,11 +7,13 @@ import { MessageBubble } from './MessageBubble';
 interface ChatWindowProps {
     activeConversation: Conversation | null;
     messages: Message[];
+    onToggleBot: (conversationId: string, botEnabled: boolean) => void;
 }
 
 export const ChatWindow: React.FC<ChatWindowProps> = ({
     activeConversation,
-    messages
+    messages,
+    onToggleBot
 }) => {
     const [inputText, setInputText] = useState('');
     const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -77,6 +79,24 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                 </div>
 
                 <div className="flex items-center gap-4 text-gray-600">
+                    {/* Bot Toggle Switch */}
+                    <div className="flex items-center gap-2 mr-2">
+                        <span className="text-xs font-medium text-gray-500 hidden md:block">
+                            {activeConversation.botEnabled ? 'Bot Activo' : 'Bot Pausado'}
+                        </span>
+                        <button
+                            onClick={() => onToggleBot(activeConversation.id, !activeConversation.botEnabled)}
+                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${activeConversation.botEnabled ? 'bg-green-500' : 'bg-gray-300'
+                                }`}
+                            title={activeConversation.botEnabled ? 'Desactivar respuesta automática (n8n)' : 'Activar respuesta automática (n8n)'}
+                        >
+                            <span
+                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${activeConversation.botEnabled ? 'translate-x-6' : 'translate-x-1'
+                                    }`}
+                            />
+                        </button>
+                    </div>
+
                     <button className="hover:bg-gray-200 p-2 rounded-full transition-colors"><Search className="w-5 h-5" /></button>
                     <button className="hover:bg-gray-200 p-2 rounded-full transition-colors"><MoreVertical className="w-5 h-5" /></button>
                 </div>
@@ -116,8 +136,8 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                     onClick={handleSend}
                     disabled={!inputText.trim()}
                     className={`p-2 rounded-full flex items-center justify-center ${inputText.trim()
-                            ? 'bg-green-500 text-white hover:bg-green-600'
-                            : 'text-gray-400 bg-gray-200 cursor-not-allowed'
+                        ? 'bg-green-500 text-white hover:bg-green-600'
+                        : 'text-gray-400 bg-gray-200 cursor-not-allowed'
                         } transition-colors`}
                 >
                     <Send className="w-5 h-5 ml-0.5" />
