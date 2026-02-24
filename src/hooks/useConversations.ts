@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { conversationService } from '../services/api';
-import { useSocket } from './useSocket';
+import { supabase } from '../lib/supabase';
 
 export interface Contact {
     createdAt: any;
@@ -44,8 +44,6 @@ export const useConversations = () => {
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState<'open' | 'closed'>('open');
 
-    const { socket } = useSocket();
-
     // Cargar lista de conversaciones
     const fetchConversations = useCallback(async () => {
         try {
@@ -82,85 +80,103 @@ export const useConversations = () => {
         fetchMessages(conversation.id);
     };
 
-    // Socket: Escuchar nuevos mensajes
+    // Supabase Realtime: Escuchar nuevos mensajes y actualizaciones
     useEffect(() => {
-        if (!socket) return;
+        const channel = supabase
+            .channel('crm_realtime')
+            .on(
+                'postgres_changes',
+                { event: 'INSERT', schema: 'crm', table: 'messages' },
+                (payload) => {
+                    const message = payload.new as Message;
+                    const targetConvId = message.conversationId;
 
-        socket.on('newMessage', (payload: any) => {
-            const { message, conversation, contact } = payload;
-            const targetConvId = message.conversationId;
-
-            // Actualizar mensajes si es la conversación activa
-            if (activeConversation?.id === targetConvId) {
-                setMessages(prev => [...prev, message]);
-                // Como estamos viéndola, deberíamos marcarlo como leído (TODO)
-            }
-
-            // Actualizar vista de lista de conversaciones
-            setConversations(prev => {
-                const exists = prev.find(c => c.id === targetConvId);
-
-                if (exists) {
-                    // Si existe, la actualizamos y la movemos arriba
-                    const updatedList = prev.map(c => {
-                        if (c.id === targetConvId) {
-                            return {
-                                ...c,
-                                lastMessageAt: message.timestamp,
-                                messages: [message],
-                                _count: {
-                                    messages: c.id === activeConversation?.id
-                                        ? c._count.messages
-                                        : c._count.messages + (message.direction === 'inbound' ? 1 : 0)
-                                }
-                            };
-                        }
-                        return c;
-                    });
-                    return updatedList.sort((a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime());
-                } else {
-                    // Si es nueva y viene en el payload (sólo para inbound usualmente)
-                    if (conversation && contact) {
-                        const newConv: Conversation = {
-                            ...conversation,
-                            contact,
-                            messages: [message],
-                            _count: { messages: message.direction === 'inbound' ? 1 : 0 }
-                        };
-                        return [newConv, ...prev];
+                    // Fetch the full conversation details to construct the object properly if necessary
+                    // but usually, we just update the cached lists.
+                    if (activeConversation?.id === targetConvId) {
+                        setMessages((prev) => [...prev, message]);
                     }
-                    return prev;
+
+                    setConversations((prev) => {
+                        const exists = prev.find((c) => c.id === targetConvId);
+                        if (exists) {
+                            const updatedList = prev.map((c) => {
+                                if (c.id === targetConvId) {
+                                    return {
+                                        ...c,
+                                        lastMessageAt: message.timestamp,
+                                        messages: [message],
+                                        _count: {
+                                            messages:
+                                                c.id === activeConversation?.id
+                                                    ? c._count.messages
+                                                    : c._count.messages + (message.direction === 'inbound' ? 1 : 0),
+                                        },
+                                    };
+                                }
+                                return c;
+                            });
+                            return updatedList.sort(
+                                (a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()
+                            );
+                        } else {
+                            // If it's a completely new conversation we need to fetch it from the API to get contact info
+                            fetchConversations();
+                            return prev;
+                        }
+                    });
                 }
-            });
-        });
+            )
+            .on(
+                'postgres_changes',
+                { event: 'UPDATE', schema: 'crm', table: 'messages' },
+                (payload) => {
+                    const updatedMessage = payload.new as Message;
+                    const { id: messageId, status, conversationId } = updatedMessage;
 
-        socket.on('messageStatus', (payload: any) => {
-            const { messageId, status, conversationId } = payload;
+                    if (activeConversation?.id === conversationId) {
+                        setMessages((prev) =>
+                            prev.map((m) => (m.id === messageId ? { ...m, status } : m))
+                        );
+                    }
 
-            // Actualizar en la lista de mensajes (si está activa)
-            if (activeConversation?.id === conversationId) {
-                setMessages(prev => prev.map(m =>
-                    m.id === messageId ? { ...m, status } : m
-                ));
-            }
-
-            // Actualizar el "último mensaje" de la lista de conversaciones
-            setConversations(prev => prev.map(c => {
-                if (c.id === conversationId && c.messages && c.messages[0]?.id === messageId) {
-                    return {
-                        ...c,
-                        messages: [{ ...c.messages[0], status }]
-                    };
+                    setConversations((prev) =>
+                        prev.map((c) => {
+                            if (c.id === conversationId && c.messages && c.messages[0]?.id === messageId) {
+                                return {
+                                    ...c,
+                                    messages: [{ ...c.messages[0], status }],
+                                };
+                            }
+                            return c;
+                        })
+                    );
                 }
-                return c;
-            }));
-        });
+            )
+            .on(
+                'postgres_changes',
+                { event: 'UPDATE', schema: 'crm', table: 'conversations' },
+                (payload) => {
+                    const updatedConversation = payload.new as Conversation;
+                    const { id: conversationId, botEnabled } = updatedConversation;
+
+                    if (activeConversation?.id === conversationId && activeConversation.botEnabled !== botEnabled) {
+                        setActiveConversation((prev) => prev ? { ...prev, botEnabled } : prev);
+                    }
+
+                    setConversations((prev) =>
+                        prev.map((c) =>
+                            c.id === conversationId ? { ...c, botEnabled } : c
+                        )
+                    );
+                }
+            )
+            .subscribe();
 
         return () => {
-            socket.off('newMessage');
-            socket.off('messageStatus');
+            supabase.removeChannel(channel);
         };
-    }, [socket, activeConversation]);
+    }, [activeConversation, fetchConversations]);
 
     useEffect(() => {
         fetchConversations();
