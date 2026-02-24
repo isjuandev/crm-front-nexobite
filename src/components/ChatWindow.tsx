@@ -45,10 +45,9 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                 <div className="bg-white rounded-full p-6 shadow-sm mb-4">
                     <Phone className="w-16 h-16 text-gray-300" />
                 </div>
-                <h2 className="text-2xl font-light text-gray-600 mb-2">WhatsApp Web CRM</h2>
+                <h2 className="text-2xl font-light text-gray-600 mb-2">CRM NexoBite - WhatsApp</h2>
                 <p className="text-gray-500 text-sm max-w-md text-center">
-                    Envía y recibe mensajes vinculando el webhook de Meta.
-                    Selecciona un chat en la barra lateral para empezar a mensajear.
+                    Bienvenido a tu CRM NexoBite
                 </p>
             </div>
         );
