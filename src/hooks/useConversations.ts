@@ -90,15 +90,28 @@ export const useConversations = () => {
                 'postgres_changes',
                 { event: 'INSERT', schema: 'crm', table: 'messages' },
                 (payload) => {
-                    const message = payload.new as Message;
-                    const targetConvId = message.conversationId;
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const rawMsg = payload.new as any;
+                    const mappedMessage: Message = {
+                        id: rawMsg.id,
+                        conversationId: rawMsg.conversationId || rawMsg.conversationid || rawMsg.conversation_id,
+                        content: rawMsg.content,
+                        type: rawMsg.type || 'text',
+                        direction: rawMsg.direction,
+                        status: rawMsg.status || 'sent',
+                        timestamp: rawMsg.timestamp || new Date().toISOString(),
+                        mediaUrl: rawMsg.mediaUrl || rawMsg.mediaurl || rawMsg.media_url,
+                    };
+                    const targetConvId = mappedMessage.conversationId;
+
+                    if (!targetConvId) return;
 
                     // Fetch the full conversation details to construct the object properly if necessary
                     // but usually, we just update the cached lists.
                     if (activeConvIdRef.current === targetConvId) {
                         setMessages((prev) => {
-                            if (prev.some(m => m.id === message.id)) return prev;
-                            const newMessages = [...prev, message];
+                            if (prev.some(m => m.id === mappedMessage.id)) return prev;
+                            const newMessages = [...prev, mappedMessage];
                             // Also update activeConversation to force component re-renders that strict check it
                             setActiveConversation(curr => curr ? { ...curr, messages: newMessages } : curr);
                             return newMessages;
@@ -112,13 +125,13 @@ export const useConversations = () => {
                                 if (c.id === targetConvId) {
                                     return {
                                         ...c,
-                                        lastMessageAt: message.timestamp,
-                                        messages: [message],
+                                        lastMessageAt: mappedMessage.timestamp,
+                                        messages: [mappedMessage],
                                         _count: {
                                             messages:
                                                 c.id === activeConvIdRef.current
                                                     ? c._count.messages
-                                                    : c._count.messages + (message.direction === 'inbound' ? 1 : 0),
+                                                    : c._count.messages + (mappedMessage.direction === 'inbound' ? 1 : 0),
                                         },
                                     };
                                 }
@@ -139,8 +152,13 @@ export const useConversations = () => {
                 'postgres_changes',
                 { event: 'UPDATE', schema: 'crm', table: 'messages' },
                 (payload) => {
-                    const updatedMessage = payload.new as Message;
-                    const { id: messageId, status, conversationId } = updatedMessage;
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const updatedMessage = payload.new as any;
+                    const messageId = updatedMessage.id;
+                    const status = updatedMessage.status;
+                    const conversationId = updatedMessage.conversationId || updatedMessage.conversationid || updatedMessage.conversation_id;
+
+                    if (!conversationId) return;
 
                     if (activeConvIdRef.current === conversationId) {
                         setMessages((prev) => {
@@ -167,8 +185,12 @@ export const useConversations = () => {
                 'postgres_changes',
                 { event: 'UPDATE', schema: 'crm', table: 'conversations' },
                 (payload) => {
-                    const updatedConversation = payload.new as Conversation;
-                    const { id: conversationId, botEnabled } = updatedConversation;
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const updatedConversation = payload.new as any;
+                    const conversationId = updatedConversation.id;
+                    const botEnabled = updatedConversation.botEnabled ?? updatedConversation.botenabled ?? updatedConversation.bot_enabled;
+
+                    if (!conversationId) return;
 
                     if (activeConvIdRef.current === conversationId) {
                         setActiveConversation((prev) => {
