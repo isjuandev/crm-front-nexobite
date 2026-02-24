@@ -98,7 +98,10 @@ export const useConversations = () => {
                     if (activeConvIdRef.current === targetConvId) {
                         setMessages((prev) => {
                             if (prev.some(m => m.id === message.id)) return prev;
-                            return [...prev, message];
+                            const newMessages = [...prev, message];
+                            // Also update activeConversation to force component re-renders that strict check it
+                            setActiveConversation(curr => curr ? { ...curr, messages: newMessages } : curr);
+                            return newMessages;
                         });
                     }
 
@@ -140,9 +143,11 @@ export const useConversations = () => {
                     const { id: messageId, status, conversationId } = updatedMessage;
 
                     if (activeConvIdRef.current === conversationId) {
-                        setMessages((prev) =>
-                            prev.map((m) => (m.id === messageId ? { ...m, status } : m))
-                        );
+                        setMessages((prev) => {
+                            const newMessages = prev.map((m) => (m.id === messageId ? { ...m, status } : m));
+                            setActiveConversation(curr => curr ? { ...curr, messages: newMessages } : curr);
+                            return newMessages;
+                        });
                     }
 
                     setConversations((prev) =>
