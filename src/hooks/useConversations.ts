@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { conversationService } from '../services/api';
 import { supabase } from '../lib/supabase';
 
@@ -40,6 +40,7 @@ export interface Conversation {
 export const useConversations = () => {
     const [conversations, setConversations] = useState<Conversation[]>([]);
     const [activeConversation, setActiveConversation] = useState<Conversation | null>(null);
+    const activeConvIdRef = useRef<string | null>(null);
     const [messages, setMessages] = useState<Message[]>([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState<'open' | 'closed'>('open');
@@ -77,6 +78,7 @@ export const useConversations = () => {
     // Cambiar conversación activa
     const selectConversation = (conversation: Conversation) => {
         setActiveConversation(conversation);
+        activeConvIdRef.current = conversation.id;
         fetchMessages(conversation.id);
     };
 
@@ -93,8 +95,11 @@ export const useConversations = () => {
 
                     // Fetch the full conversation details to construct the object properly if necessary
                     // but usually, we just update the cached lists.
-                    if (activeConversation?.id === targetConvId) {
-                        setMessages((prev) => [...prev, message]);
+                    if (activeConvIdRef.current === targetConvId) {
+                        setMessages((prev) => {
+                            if (prev.some(m => m.id === message.id)) return prev;
+                            return [...prev, message];
+                        });
                     }
 
                     setConversations((prev) => {
@@ -108,7 +113,7 @@ export const useConversations = () => {
                                         messages: [message],
                                         _count: {
                                             messages:
-                                                c.id === activeConversation?.id
+                                                c.id === activeConvIdRef.current
                                                     ? c._count.messages
                                                     : c._count.messages + (message.direction === 'inbound' ? 1 : 0),
                                         },
@@ -134,7 +139,7 @@ export const useConversations = () => {
                     const updatedMessage = payload.new as Message;
                     const { id: messageId, status, conversationId } = updatedMessage;
 
-                    if (activeConversation?.id === conversationId) {
+                    if (activeConvIdRef.current === conversationId) {
                         setMessages((prev) =>
                             prev.map((m) => (m.id === messageId ? { ...m, status } : m))
                         );
@@ -160,8 +165,13 @@ export const useConversations = () => {
                     const updatedConversation = payload.new as Conversation;
                     const { id: conversationId, botEnabled } = updatedConversation;
 
-                    if (activeConversation?.id === conversationId && activeConversation.botEnabled !== botEnabled) {
-                        setActiveConversation((prev) => prev ? { ...prev, botEnabled } : prev);
+                    if (activeConvIdRef.current === conversationId) {
+                        setActiveConversation((prev) => {
+                            if (prev && prev.botEnabled !== botEnabled) {
+                                return { ...prev, botEnabled };
+                            }
+                            return prev;
+                        });
                     }
 
                     setConversations((prev) =>
@@ -176,7 +186,7 @@ export const useConversations = () => {
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [activeConversation, fetchConversations]);
+    }, [fetchConversations]);
 
     useEffect(() => {
         fetchConversations();
@@ -186,8 +196,8 @@ export const useConversations = () => {
     const toggleBotMode = async (conversationId: string, botEnabled: boolean) => {
         try {
             await conversationService.toggleBot(conversationId, botEnabled);
-            if (activeConversation?.id === conversationId) {
-                setActiveConversation({ ...activeConversation, botEnabled });
+            if (activeConvIdRef.current === conversationId) {
+                setActiveConversation(prev => prev ? { ...prev, botEnabled } : prev);
             }
             // Update in the listing cache
             setConversations(prev => prev.map(c =>
