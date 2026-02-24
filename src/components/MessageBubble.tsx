@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { format } from 'date-fns';
 import { Check, CheckCheck } from 'lucide-react';
 import { Message } from '../hooks/useConversations';
@@ -13,7 +13,7 @@ interface MessageBubbleProps {
     message: Message;
 }
 
-export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
+export const MessageBubble: React.FC<MessageBubbleProps> = memo(({ message }) => {
     const isOutbound = message.direction === 'outbound';
 
     const renderStatusIcon = () => {
@@ -67,4 +67,5 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
             </div>
         </div>
     );
-};
+});
+MessageBubble.displayName = 'MessageBubble';

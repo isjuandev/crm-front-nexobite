@@ -39,6 +39,20 @@ export const messageService = {
             content,
         });
         return response.data;
+    },
+
+    getTemplates: async () => {
+        const response = await api.get('/messages/templates');
+        return response.data;
+    },
+
+    sendTemplate: async (conversationId: string, templateName: string, languageCode: string = 'es_MX') => {
+        const response = await api.post('/messages/send-template', {
+            conversationId,
+            templateName,
+            languageCode
+        });
+        return response.data;
     }
 };
 

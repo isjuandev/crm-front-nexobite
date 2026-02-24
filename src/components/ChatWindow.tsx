@@ -1,8 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Send, Phone, MoreVertical, Search, Paperclip, Smile, Bot } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Phone, MoreVertical, Search, Bot } from 'lucide-react';
 import { Conversation, Message } from '../hooks/useConversations';
 import { messageService } from '../services/api';
 import { MessageBubble } from './MessageBubble';
+import { MessageInput } from './MessageInput';
+import { TemplatesModal } from './TemplatesModal';
 
 interface ChatWindowProps {
     activeConversation: Conversation | null;
@@ -15,8 +17,8 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
     messages,
     onToggleBot
 }) => {
-    const [inputText, setInputText] = useState('');
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const [isTemplatesModalOpen, setIsTemplatesModalOpen] = useState(false);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -26,20 +28,14 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
         scrollToBottom();
     }, [messages]);
 
-    const handleSend = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!inputText.trim() || !activeConversation) return;
-
-        const messageContent = inputText;
-        setInputText('');
-
+    const handleSendMessage = async (messageContent: string) => {
+        if (!activeConversation) return;
         try {
             await messageService.sendMessage(activeConversation.id, messageContent);
-            // el envío real se actualiza via Socket (o optimísticamente si quisiéramos)
+            // el envío real se actualiza via Socket
         } catch (error) {
             console.error('Error enviando mensaje:', error);
-            // Restaurar el texto en caso de error
-            setInputText(messageContent);
+            throw error; // Re-throw to restore input text in MessageInput
         }
     };
 
@@ -113,36 +109,17 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
             </div>
 
             {/* Input Area */}
-            <div className="bg-[#f0f2f5] px-4 py-3 flex items-center gap-3">
-                <button className="text-gray-500 hover:text-gray-700 p-1">
-                    <Smile className="w-6 h-6" />
-                </button>
-                <button className="text-gray-500 hover:text-gray-700 p-1">
-                    <Paperclip className="w-6 h-6" />
-                </button>
+            <MessageInput
+                onSendMessage={handleSendMessage}
+                onOpenTemplates={() => setIsTemplatesModalOpen(true)}
+            />
 
-                <form onSubmit={handleSend} className="flex-1 flex items-center bg-white rounded-lg px-4 py-2 border border-blue-50 focus-within:ring-1 focus-within:ring-green-400">
-                    <input
-                        type="text"
-                        value={inputText}
-                        onChange={(e) => setInputText(e.target.value)}
-                        placeholder="Escribe un mensaje"
-                        className="flex-1 outline-none bg-transparent text-gray-700"
-                        autoFocus
-                    />
-                </form>
-
-                <button
-                    onClick={handleSend}
-                    disabled={!inputText.trim()}
-                    className={`p-2 rounded-full flex items-center justify-center ${inputText.trim()
-                        ? 'bg-green-500 text-white hover:bg-green-600'
-                        : 'text-gray-400 bg-gray-200 cursor-not-allowed'
-                        } transition-colors`}
-                >
-                    <Send className="w-5 h-5 ml-0.5" />
-                </button>
-            </div>
+            {/* Templates Modal */}
+            <TemplatesModal
+                isOpen={isTemplatesModalOpen}
+                onClose={() => setIsTemplatesModalOpen(false)}
+                conversationId={activeConversation.id}
+            />
         </div>
     );
 };
