@@ -1,16 +1,43 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { conversationService } from '../services/api';
+import { conversationService, labelService, contactService } from '../services/api';
 import { supabase } from '../lib/supabase';
+import { io, Socket } from 'socket.io-client';
+
+export interface Label {
+    id: string;
+    name: string;
+    color: string;
+    createdAt: string;
+}
+
+export interface ConversationLabel {
+    conversationId: string;
+    labelId: string;
+    label: Label;
+}
+
+export interface Note {
+    id: string;
+    contactId: string;
+    content: string;
+    createdBy?: string;
+    createdAt: string;
+}
 
 export interface Contact {
-    createdAt: any;
+    createdAt: string;
+    updatedAt: string;
     id: string;
     phone: string;
     name: string;
+    email?: string | null;
     company?: string | null;
+    avatarUrl?: string | null;
+    customFields?: any | null;
     interestStatus: string;
     recommendedService?: string | null;
     notes?: string | null;
+    contactNotes?: Note[];
 }
 
 export interface Message {
@@ -27,11 +54,12 @@ export interface Message {
 export interface Conversation {
     id: string;
     contactId: string;
-    status: 'open' | 'closed';
+    status: 'open' | 'closed' | 'pending' | 'unread';
     botEnabled: boolean;
     lastMessageAt: string;
     contact: Contact;
     messages: Message[];
+    labels: ConversationLabel[];
     _count: {
         messages: number;
     };
@@ -43,13 +71,17 @@ export const useConversations = () => {
     const activeConvIdRef = useRef<string | null>(null);
     const [messages, setMessages] = useState<Message[]>([]);
     const [loading, setLoading] = useState(true);
-    const [filter, setFilter] = useState<'open' | 'closed'>('open');
+    const [filter, setFilter] = useState<'all' | 'open' | 'pending' | 'unread' | 'closed'>('all');
+    const [availableLabels, setAvailableLabels] = useState<Label[]>([]);
+    const socketRef = useRef<Socket | null>(null);
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
     // Cargar lista de conversaciones
     const fetchConversations = useCallback(async () => {
         try {
             setLoading(true);
-            const data = await conversationService.getConversations(filter);
+            const statusFilter = filter === 'all' ? undefined : filter;
+            const data = await conversationService.getConversations(statusFilter);
             setConversations(data);
         } catch (error) {
             console.error('Error fetching conversations:', error);
@@ -57,6 +89,16 @@ export const useConversations = () => {
             setLoading(false);
         }
     }, [filter]);
+
+    // Cargar todas las etiquetas disponibles
+    const fetchLabels = useCallback(async () => {
+        try {
+            const data = await labelService.getLabels();
+            setAvailableLabels(data);
+        } catch (error) {
+            console.error('Error fetching labels:', error);
+        }
+    }, []);
 
     // Cargar mensajes de una conversación
     const fetchMessages = useCallback(async (conversationId: string) => {
@@ -210,14 +252,130 @@ export const useConversations = () => {
             )
             .subscribe();
 
+        // Socket.io para eventos de conversación (Labels, Status)
+        if (!socketRef.current) {
+            socketRef.current = io(API_URL);
+
+            socketRef.current.on('conversation:updated', (data: any) => {
+                console.log('🔄 Conversación actualizada:', data);
+                const { id, type } = data;
+
+                if (type === 'status_updated') {
+                    setConversations(prev => prev.map(c =>
+                        c.id === id ? { ...c, status: data.status } : c
+                    ));
+                    if (activeConvIdRef.current === id) {
+                        setActiveConversation(prev => prev ? { ...prev, status: data.status } : prev);
+                    }
+                } else if (type === 'new_message') {
+                    // Solo actualizamos el status a unread si no es la activa
+                    setConversations(prev => prev.map(c =>
+                        c.id === id ? { ...c, status: 'unread' } : c
+                    ));
+                } else if (type === 'label_added') {
+                    setConversations(prev => prev.map(c => {
+                        if (c.id === id) {
+                            const labelExists = c.labels.some(l => l.labelId === data.label.id);
+                            if (labelExists) return c;
+                            return {
+                                ...c,
+                                labels: [...c.labels, { conversationId: id, labelId: data.label.id, label: data.label }]
+                            };
+                        }
+                        return c;
+                    }));
+                    if (activeConvIdRef.current === id) {
+                        setActiveConversation(prev => {
+                            if (!prev) return null;
+                            const labelExists = prev.labels.some(l => l.labelId === data.label.id);
+                            if (labelExists) return prev;
+                            return {
+                                ...prev,
+                                labels: [...prev.labels, { conversationId: id, labelId: data.label.id, label: data.label }]
+                            };
+                        });
+                    }
+                } else if (type === 'label_removed') {
+                    setConversations(prev => prev.map(c => {
+                        if (c.id === id) {
+                            return {
+                                ...c,
+                                labels: c.labels.filter(l => l.labelId !== data.labelId)
+                            };
+                        }
+                        return c;
+                    }));
+                    if (activeConvIdRef.current === id) {
+                        setActiveConversation(prev => prev ? {
+                            ...prev,
+                            labels: prev.labels.filter(l => l.labelId !== data.labelId)
+                        } : null);
+                    }
+                }
+            });
+        }
+
         return () => {
             supabase.removeChannel(channel);
+            if (socketRef.current) {
+                socketRef.current.disconnect();
+                socketRef.current = null;
+            }
         };
-    }, [fetchConversations]);
+    }, [fetchConversations, API_URL]);
 
     useEffect(() => {
         fetchConversations();
-    }, [fetchConversations]);
+        fetchLabels();
+    }, [fetchConversations, fetchLabels]);
+
+    // Actualizar estado de la conversación
+    const changeStatus = async (conversationId: string, status: 'open' | 'closed' | 'pending' | 'unread') => {
+        try {
+            await conversationService.updateStatus(conversationId, status);
+            // El estado se actualizará vía socket.io o manualmente aquí si queremos optimismo
+        } catch (error) {
+            console.error('Error changing status:', error);
+        }
+    };
+
+    // Agregar nota a contacto
+    const addContactNote = async (contactId: string, content: string) => {
+        try {
+            const newNote = await contactService.addNote(contactId, content, 'Agente'); // Hardcoded 'Agente' for now
+            if (activeConversation && activeConversation.contact.id === contactId) {
+                setActiveConversation(prev => prev ? {
+                    ...prev,
+                    contact: {
+                        ...prev.contact,
+                        contactNotes: [newNote, ...(prev.contact.contactNotes || [])]
+                    }
+                } : null);
+            }
+            return newNote;
+        } catch (error) {
+            console.error('Error adding note:', error);
+            throw error;
+        }
+    };
+
+    // Asignar etiqueta
+    const assignLabel = async (conversationId: string, labelId: string) => {
+        try {
+            await conversationService.assignLabel(conversationId, labelId);
+        } catch (error) {
+            console.error('Error assigning label:', error);
+        }
+    };
+
+    // Quitar etiqueta
+    const removeLabel = async (conversationId: string, labelId: string) => {
+        try {
+            await conversationService.removeLabel(conversationId, labelId);
+        } catch (error) {
+            console.error('Error removing label:', error);
+        }
+    };
 
     // Alternar el estado del Bot
     const toggleBotMode = async (conversationId: string, botEnabled: boolean) => {
@@ -242,8 +400,15 @@ export const useConversations = () => {
         loading,
         filter,
         setFilter,
+        availableLabels,
         selectConversation,
         setMessages,
-        toggleBotMode
+        toggleBotMode,
+        changeStatus,
+        addContactNote,
+        assignLabel,
+        removeLabel,
+        fetchConversations,
+        fetchLabels
     };
 };

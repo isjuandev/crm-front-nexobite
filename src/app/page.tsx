@@ -14,8 +14,13 @@ export default function Home() {
     loading,
     filter,
     setFilter,
+    availableLabels,
     selectConversation,
     toggleBotMode,
+    changeStatus,
+    assignLabel,
+    removeLabel,
+    addContactNote
   } = useConversations();
 
   const [showInfo, setShowInfo] = useState(false);
@@ -52,7 +57,11 @@ export default function Home() {
         <ChatWindow
           activeConversation={activeConversation}
           messages={messages}
+          availableLabels={availableLabels}
           onToggleBot={toggleBotMode}
+          onChangeStatus={changeStatus}
+          onAssignLabel={assignLabel}
+          onRemoveLabel={removeLabel}
         />
       </div>
 
@@ -62,6 +71,7 @@ export default function Home() {
           conversation={activeConversation}
           isOpen={showInfo}
           onClose={() => setShowInfo(false)}
+          onAddNote={addContactNote}
         />
       )}
     </main>
