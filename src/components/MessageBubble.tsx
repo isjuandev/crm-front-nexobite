@@ -18,48 +18,41 @@ export const MessageBubble: React.FC<MessageBubbleProps> = memo(({ message }) =>
 
     const renderStatusIcon = () => {
         if (!isOutbound) return null;
-
         switch (message.status) {
             case 'sent':
-                return <Check className="w-4 h-4 text-gray-400" />;
+                return <Check className="w-3.5 h-3.5 text-bubble-outbound-foreground opacity-50" />;
             case 'delivered':
-                return <CheckCheck className="w-4 h-4 text-gray-400" />;
+                return <CheckCheck className="w-3.5 h-3.5 text-bubble-outbound-foreground opacity-60" />;
             case 'read':
-                return <CheckCheck className="w-4 h-4 text-blue-500" />;
+                return <CheckCheck className="w-3.5 h-3.5 text-info" />;
             case 'failed':
-                return <span className="text-red-500 text-xs">Error</span>;
+                return <span className="text-error text-[9px] font-black uppercase">Error</span>;
             default:
-                return <Check className="w-4 h-4 text-gray-400" />;
+                return <Check className="w-3.5 h-3.5 text-bubble-outbound-foreground opacity-50" />;
         }
     };
 
     return (
-        <div
-            className={cn(
-                "flex w-full mb-4",
-                isOutbound ? "justify-end" : "justify-start"
-            )}
-        >
-            <div
-                className={cn(
-                    "max-w-[75%] rounded-lg px-4 py-2 relative group",
-                    isOutbound
-                        ? "bg-green-100 text-green-900 rounded-tr-none"
-                        : "bg-white text-gray-800 rounded-tl-none shadow-sm"
-                )}
-            >
+        <div className={cn("flex w-full mb-3 animate-slide-up", isOutbound ? "justify-end" : "justify-start")}>
+            <div className={cn(
+                "max-w-[75%] px-4 py-2.5 relative shadow-sm transition-all",
+                isOutbound
+                    ? "bg-bubble-outbound text-bubble-outbound-foreground rounded-2xl rounded-tr-sm"
+                    : "bg-bubble-inbound text-bubble-inbound-foreground rounded-2xl rounded-tl-sm border border-border-secondary"
+            )}>
                 {message.type !== 'text' && message.mediaUrl && (
-                    <div className="mb-2 p-2 border border-gray-200 rounded text-xs text-gray-500 flex items-center gap-2">
-                        <span>📎 Contenido multimedia ({message.type})</span>
+                    <div className="mb-2 p-2.5 bg-black/10 rounded-xl text-[10px] font-bold uppercase tracking-wider flex items-center gap-2 border border-black/10">
+                        <span>📎</span>
+                        <span className="opacity-70">Multimedia ({message.type})</span>
                     </div>
                 )}
 
-                <p className="text-sm whitespace-pre-wrap word-break break-words">
-                    {message.content || ""}
+                <p className="text-sm whitespace-pre-wrap wrap-break-word leading-relaxed font-medium">
+                    {message.content || ''}
                 </p>
 
-                <div className="flex items-center justify-end gap-1 mt-1">
-                    <span className="text-[10px] text-gray-500">
+                <div className="flex items-center justify-end gap-1 mt-1 opacity-70">
+                    <span className="text-[10px] font-medium">
                         {format(new Date(message.timestamp), 'HH:mm')}
                     </span>
                     {renderStatusIcon()}

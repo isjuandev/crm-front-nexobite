@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
-import { X, Plus, Tag as TagIcon, Check } from 'lucide-react';
+import { X, Plus, Tag as TagIcon, Check, Palette } from 'lucide-react';
 import { Label, Conversation } from '../hooks/useConversations';
 import { cn } from './MessageBubble';
 import { labelService } from '../services/api';
-import { Palette } from 'lucide-react';
 
 interface LabelManagerProps {
     isOpen: boolean;
@@ -23,7 +22,7 @@ export const LabelManager: React.FC<LabelManagerProps> = ({
     onRemoveLabel
 }) => {
     const [newLabelName, setNewLabelName] = useState('');
-    const [newLabelColor, setNewLabelColor] = useState('#3b82f6');
+    const [newLabelColor, setNewLabelColor] = useState('#ed8936');
     const [isCreating, setIsCreating] = useState(false);
     const [showCreateForm, setShowCreateForm] = useState(false);
 
@@ -34,14 +33,11 @@ export const LabelManager: React.FC<LabelManagerProps> = ({
     const handleCreateLabel = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!newLabelName.trim()) return;
-
         try {
             setIsCreating(true);
             await labelService.createLabel(newLabelName, newLabelColor);
             setNewLabelName('');
             setShowCreateForm(false);
-            // Available labels will refresh naturally if they come from parent's state
-            // But we might need a way to tell the parent to refetch
         } catch (error) {
             console.error('Error creating label:', error);
         } finally {
@@ -50,70 +46,83 @@ export const LabelManager: React.FC<LabelManagerProps> = ({
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-            <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
-                <div className="flex items-center justify-between p-4 border-b">
-                    <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                        <TagIcon className="w-5 h-5 text-blue-500" />
-                        Gestionar Etiquetas
-                    </h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
+            <div className="bg-background rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-zoom-in border border-border">
+                {/* Header */}
+                <header className="flex items-center justify-between p-5 border-b border-border bg-(--sidebar-header)">
+                    <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-(--accent-soft) flex items-center justify-center">
+                            <TagIcon className="w-4 h-4 text-accent" />
+                        </div>
+                        <h3 className="text-base font-bold text-foreground tracking-tight">Gestionar Etiquetas</h3>
+                    </div>
                     <div className="flex items-center gap-2">
                         <button
                             onClick={() => setShowCreateForm(!showCreateForm)}
-                            className="p-1 px-2 text-xs font-bold text-blue-600 hover:bg-blue-50 rounded border border-blue-100 transition-colors flex items-center gap-1"
+                            className={cn(
+                                "flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider transition-all rounded-lg border",
+                                showCreateForm
+                                    ? "bg-tertiary text-foreground border-border"
+                                    : "bg-accent text-white border-transparent shadow-md hover:scale-[1.02]"
+                            )}
                         >
-                            <Plus className="w-3 h-3" />
-                            Nueva
+                            {showCreateForm ? <X className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
+                            {showCreateForm ? 'Cancelar' : 'Nueva'}
                         </button>
-                        <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-                            <X className="w-5 h-5" />
+                        <button
+                            onClick={onClose}
+                            className="p-1.5 rounded-lg text-muted hover:text-foreground hover:bg-tertiary transition-all border border-transparent hover:border-border"
+                        >
+                            <X className="w-4 h-4" />
                         </button>
                     </div>
-                </div>
+                </header>
 
+                {/* Create Form */}
                 {showCreateForm && (
-                    <form onSubmit={handleCreateLabel} className="p-4 bg-gray-50 border-b border-gray-100 animate-in slide-in-from-top-4 duration-200">
+                    <form onSubmit={handleCreateLabel} className="p-4 bg-secondary border-b border-border animate-slide-up">
                         <div className="flex gap-2">
                             <div className="flex-1 relative">
-                                <TagIcon className="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-gray-400" />
+                                <TagIcon className="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-muted" />
                                 <input
                                     type="text"
                                     placeholder="Nombre de etiqueta..."
                                     value={newLabelName}
                                     onChange={(e) => setNewLabelName(e.target.value)}
-                                    className="w-full pl-8 pr-3 py-2 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                    className="w-full pl-8 pr-3 py-2 text-xs bg-elevated border border-border rounded-lg focus:ring-2 focus:ring-accent/20 focus:border-accent outline-none text-foreground placeholder:text-muted font-medium transition-all"
+                                    autoFocus
                                 />
                             </div>
-                            <div className="relative group">
-                                <Palette className="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-white/50 pointer-events-none" />
-                                <input
-                                    type="color"
-                                    value={newLabelColor}
-                                    onChange={(e) => setNewLabelColor(e.target.value)}
-                                    className="w-10 h-9 p-0 border-0 bg-transparent cursor-pointer rounded-lg overflow-hidden"
-                                />
-                            </div>
+                            <input
+                                type="color"
+                                value={newLabelColor}
+                                onChange={(e) => setNewLabelColor(e.target.value)}
+                                className="w-10 h-9 p-0.5 border border-border bg-elevated cursor-pointer rounded-lg overflow-hidden hover:scale-105 transition-transform"
+                            />
                             <button
                                 type="submit"
                                 disabled={isCreating || !newLabelName.trim()}
-                                className="px-4 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 disabled:bg-blue-300 transition-colors"
+                                className="px-3 bg-accent text-white rounded-lg text-xs font-black hover:opacity-90 disabled:opacity-50 transition-all shadow-sm"
                             >
-                                Crear
+                                {isCreating
+                                    ? <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                    : 'Crear'}
                             </button>
                         </div>
                     </form>
                 )}
 
-                <div className="p-4 max-h-[60vh] overflow-y-auto">
-                    <p className="text-sm text-gray-500 mb-4">
-                        Selecciona las etiquetas para esta conversación:
+                {/* Labels List */}
+                <div className="p-4 max-h-[50vh] overflow-y-auto custom-scrollbar">
+                    <p className="text-[10px] font-black text-muted uppercase tracking-wider mb-3">
+                        Etiquetas de esta conversación
                     </p>
-
                     <div className="space-y-2">
                         {availableLabels.length === 0 ? (
-                            <p className="text-center py-4 text-gray-400 text-sm italic">
-                                No hay etiquetas disponibles. Créalas desde el panel de configuración.
-                            </p>
+                            <div className="text-center py-10 bg-secondary rounded-xl border border-dashed border-border">
+                                <TagIcon className="w-7 h-7 mx-auto mb-2 text-muted opacity-30" />
+                                <p className="text-xs font-semibold text-muted">No hay etiquetas disponibles</p>
+                            </div>
                         ) : (
                             availableLabels.map((label) => {
                                 const isAssigned = assignedLabelIds.includes(label.id);
@@ -122,25 +131,29 @@ export const LabelManager: React.FC<LabelManagerProps> = ({
                                         key={label.id}
                                         onClick={() => isAssigned ? onRemoveLabel(label.id) : onAssignLabel(label.id)}
                                         className={cn(
-                                            "w-full flex items-center justify-between p-3 rounded-lg border transition-all",
+                                            "w-full flex items-center justify-between p-3 rounded-xl border transition-all active:scale-[0.98]",
                                             isAssigned
-                                                ? "border-blue-200 bg-blue-50"
-                                                : "border-gray-100 hover:bg-gray-50 bg-white"
+                                                ? "border-accent/30 bg-(--accent-soft)"
+                                                : "border-border-secondary hover:border-accent/20 hover:bg-tertiary bg-elevated"
                                         )}
                                     >
                                         <div className="flex items-center gap-3">
                                             <div
-                                                className="w-4 h-4 rounded-full"
+                                                className="w-3.5 h-3.5 rounded-full shadow-sm ring-1 ring-black/10 shrink-0"
                                                 style={{ backgroundColor: label.color }}
                                             />
                                             <span className={cn(
-                                                "text-sm",
-                                                isAssigned ? "font-semibold text-blue-700" : "text-gray-700"
+                                                "text-sm font-semibold",
+                                                isAssigned ? "text-accent" : "text-(--text-secondary)"
                                             )}>
                                                 {label.name}
                                             </span>
                                         </div>
-                                        {isAssigned && <Check className="w-4 h-4 text-blue-600" />}
+                                        {isAssigned && (
+                                            <div className="w-5 h-5 rounded-lg bg-accent flex items-center justify-center">
+                                                <Check className="w-3 h-3 text-white" />
+                                            </div>
+                                        )}
                                     </button>
                                 );
                             })
@@ -148,14 +161,16 @@ export const LabelManager: React.FC<LabelManagerProps> = ({
                     </div>
                 </div>
 
-                <div className="p-4 bg-gray-50 border-t flex justify-end">
+                {/* Footer */}
+                <footer className="p-4 bg-secondary border-t border-border flex justify-end">
                     <button
                         onClick={onClose}
-                        className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+                        className="px-6 py-2.5 bg-accent text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:scale-[1.02] active:scale-[0.98] transition-all shadow-md"
+                        style={{ boxShadow: 'var(--shadow-accent)' }}
                     >
-                        Listo
+                        Confirmar
                     </button>
-                </div>
+                </footer>
             </div>
         </div>
     );

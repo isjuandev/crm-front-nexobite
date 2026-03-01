@@ -1,6 +1,6 @@
 import React from 'react';
-import { X, User, Phone, Calendar, Info, Building2, Tag, Star, AlignLeft, Plus } from 'lucide-react';
-import { Conversation, Label } from '../hooks/useConversations';
+import { X, User, Phone, Calendar, Info, Building2, AlignLeft, Plus } from 'lucide-react';
+import { Conversation } from '../hooks/useConversations';
 import { cn } from './MessageBubble';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -24,7 +24,6 @@ export const ContactInfo: React.FC<ContactInfoProps> = ({ conversation, onClose,
     const handleAddNote = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!noteContent.trim()) return;
-
         try {
             setIsSubmittingNote(true);
             await onAddNote(contact.id, noteContent);
@@ -37,51 +36,58 @@ export const ContactInfo: React.FC<ContactInfoProps> = ({ conversation, onClose,
     };
 
     return (
-        <div className="w-80 md:w-96 bg-white border-l border-gray-200 h-full flex flex-col flex-shrink-0 animate-in slide-in-from-right-8 duration-200 shadow-xl z-20">
+        <div className="w-80 md:w-96 bg-background border-l border-border h-full flex flex-col shrink-0 animate-slide-left z-20 shadow-xl">
             {/* Header */}
-            <div className="h-16 bg-white flex items-center justify-between px-4 border-b border-gray-100">
-                <h2 className="font-bold text-gray-800">Detalles del Perfil</h2>
-                <button onClick={onClose} className="hover:bg-gray-100 p-2 rounded-full transition-colors text-gray-400">
-                    <X className="w-5 h-5" />
+            <header className="h-16 bg-(--sidebar-header) backdrop-blur-xl flex items-center justify-between px-4 border-b border-border">
+                <h2 className="font-bold text-foreground text-sm tracking-tight">Detalles del Perfil</h2>
+                <button
+                    onClick={onClose}
+                    className="p-2 rounded-xl hover:bg-tertiary transition-all text-muted hover:text-foreground border border-transparent hover:border-border"
+                >
+                    <X className="w-4 h-4" />
                 </button>
-            </div>
+            </header>
 
             {/* Profile Summary */}
-            <div className="p-6 flex flex-col items-center bg-gray-50/50">
-                <div className="w-24 h-24 rounded-full bg-blue-100 flex items-center justify-center mb-4 overflow-hidden border-4 border-white shadow-sm ring-1 ring-blue-50">
-                    {contact.avatarUrl ? (
-                        <img src={contact.avatarUrl} alt={contact.name} className="w-full h-full object-cover" />
-                    ) : (
-                        <User className="w-12 h-12 text-blue-500" />
-                    )}
+            <div className="p-6 flex flex-col items-center bg-secondary border-b border-border relative overflow-hidden">
+                <div className="absolute inset-x-0 top-0 h-16 opacity-10"
+                    style={{ background: 'var(--brand-gradient)' }} />
+
+                <div className="relative mb-4">
+                    <div className="w-20 h-20 rounded-2xl bg-elevated flex items-center justify-center overflow-hidden border-4 border-background shadow-md">
+                        {contact.avatarUrl ? (
+                            <img src={contact.avatarUrl} alt={contact.name} className="w-full h-full object-cover" />
+                        ) : (
+                            <User className="w-10 h-10 text-accent" />
+                        )}
+                    </div>
                 </div>
-                <h3 className="text-lg font-bold text-gray-900 leading-tight">
+
+                <h3 className="text-base font-bold text-foreground leading-tight text-center truncate w-full px-2">
                     {contact.name || 'Sin Nombre'}
                 </h3>
-                <p className="text-sm text-gray-500 flex items-center gap-1.5 mt-1">
-                    <Phone className="w-3.5 h-3.5" />
+                <p className="text-xs text-accent flex items-center gap-1.5 mt-1.5 bg-(--accent-soft) px-3 py-1 rounded-full border border-(--accent-soft) font-semibold">
+                    <Phone className="w-3 h-3" />
                     {contact.phone}
                 </p>
-
-                {/* Status Badge */}
                 <div className="mt-3">
-                    <span className="px-3 py-1 bg-green-100 text-green-700 text-[10px] font-bold uppercase tracking-widest rounded-full">
+                    <span className="px-3 py-1 bg-elevated text-(--text-secondary) text-[9px] font-black uppercase tracking-widest rounded-lg border border-border">
                         {contact.interestStatus || 'Interesado'}
                     </span>
                 </div>
             </div>
 
-            {/* Tabs Navigation */}
-            <div className="flex border-b border-gray-100">
+            {/* Tabs */}
+            <div className="flex bg-(--sidebar-header) p-1 mx-4 mt-4 rounded-xl border border-border">
                 {(['overview', 'notes', 'history'] as const).map((tab) => (
                     <button
                         key={tab}
                         onClick={() => setActiveTab(tab)}
                         className={cn(
-                            "flex-1 py-3 text-xs font-bold uppercase tracking-wider transition-all border-b-2",
+                            "flex-1 py-2 text-[10px] font-bold uppercase tracking-wider transition-all rounded-lg",
                             activeTab === tab
-                                ? "border-blue-600 text-blue-600 bg-blue-50/30"
-                                : "border-transparent text-gray-400 hover:text-gray-600 hover:bg-gray-50"
+                                ? "bg-elevated text-foreground border border-border shadow-sm"
+                                : "text-muted hover:text-foreground hover:bg-tertiary"
                         )}
                     >
                         {tab === 'overview' ? 'Perfil' : tab === 'notes' ? 'Notas' : 'Historial'}
@@ -91,39 +97,44 @@ export const ContactInfo: React.FC<ContactInfoProps> = ({ conversation, onClose,
 
             <div className="flex-1 overflow-y-auto p-5 custom-scrollbar">
                 {activeTab === 'overview' && (
-                    <div className="space-y-6">
+                    <div className="space-y-6 animate-fade-in">
                         <section>
-                            <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mb-3 flex items-center gap-2">
-                                <Info className="w-3 h-3" /> Información CRM
+                            <h4 className="text-[9px] font-black text-muted uppercase tracking-[0.25em] mb-3 flex items-center gap-2">
+                                <Info className="w-3 h-3 text-accent" /> Información CRM
                             </h4>
-                            <div className="grid grid-cols-1 gap-4">
-                                <div className="p-3 bg-gray-50 rounded-xl border border-gray-100/50">
-                                    <p className="text-[10px] text-gray-400 font-bold uppercase mb-1">Empresa</p>
-                                    <p className="text-sm text-gray-800 font-medium">{contact.company || 'No especificado'}</p>
-                                </div>
-                                <div className="p-3 bg-gray-50 rounded-xl border border-gray-100/50">
-                                    <p className="text-[10px] text-gray-400 font-bold uppercase mb-1">Email</p>
-                                    <p className="text-sm text-gray-800 font-medium">{contact.email || 'No especificado'}</p>
-                                </div>
-                                <div className="p-3 bg-gray-50 rounded-xl border border-gray-100/50">
-                                    <p className="text-[10px] text-gray-400 font-bold uppercase mb-1">Servicio Sugerido</p>
-                                    <p className="text-sm text-gray-800 font-medium">{contact.recommendedService || 'IA Automation'}</p>
-                                </div>
+                            <div className="space-y-3">
+                                {[
+                                    { label: 'Empresa', value: contact.company || 'No especificado', Icon: Building2 },
+                                    { label: 'Email', value: contact.email || 'No especificado', Icon: Phone },
+                                    { label: 'Servicio Sugerido', value: contact.recommendedService || 'IA Automation', Icon: Info },
+                                ].map(({ label, value, Icon }) => (
+                                    <div key={label} className="p-3 bg-elevated rounded-xl border border-border-secondary hover:border-(--accent-soft) transition-colors">
+                                        <p className="text-[9px] text-muted font-black uppercase tracking-wider mb-1">{label}</p>
+                                        <div className="flex items-center gap-2">
+                                            <Icon className="w-3.5 h-3.5 text-muted shrink-0" />
+                                            <p className="text-xs text-foreground font-semibold truncate">{value}</p>
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         </section>
 
                         <section>
-                            <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mb-3 flex items-center gap-2">
-                                <Calendar className="w-3 h-3" /> Metadatos
+                            <h4 className="text-[9px] font-black text-muted uppercase tracking-[0.25em] mb-3 flex items-center gap-2">
+                                <Calendar className="w-3 h-3 text-accent" /> Metadatos
                             </h4>
-                            <div className="text-xs text-gray-500 space-y-2 px-1">
-                                <div className="flex justify-between">
-                                    <span>Creado el:</span>
-                                    <span className="font-medium">{format(new Date(contact.createdAt), "dd MMM yyyy", { locale: es })}</span>
+                            <div className="space-y-2">
+                                <div className="flex justify-between items-center p-2.5 bg-tertiary rounded-lg border border-border-secondary">
+                                    <span className="text-xs font-semibold text-(--text-secondary)">Creado el</span>
+                                    <span className="text-xs font-bold text-foreground">
+                                        {format(new Date(contact.createdAt), "dd MMM yyyy", { locale: es })}
+                                    </span>
                                 </div>
-                                <div className="flex justify-between">
-                                    <span>Última actividad:</span>
-                                    <span className="font-medium text-blue-600">Hoy, {format(new Date(conversation.lastMessageAt), "HH:mm")}</span>
+                                <div className="flex justify-between items-center p-2.5 bg-tertiary rounded-lg border border-border-secondary">
+                                    <span className="text-xs font-semibold text-(--text-secondary)">Última actividad</span>
+                                    <span className="text-xs font-bold text-accent">
+                                        Hoy, {format(new Date(conversation.lastMessageAt), "HH:mm")}
+                                    </span>
                                 </div>
                             </div>
                         </section>
@@ -131,42 +142,50 @@ export const ContactInfo: React.FC<ContactInfoProps> = ({ conversation, onClose,
                 )}
 
                 {activeTab === 'notes' && (
-                    <div className="flex flex-col h-full">
-                        {/* Add Note Form */}
+                    <div className="flex flex-col animate-fade-in">
                         <form onSubmit={handleAddNote} className="mb-6">
                             <textarea
                                 value={noteContent}
                                 onChange={(e) => setNoteContent(e.target.value)}
                                 placeholder="Escribe una nota privada sobre este contacto..."
-                                className="w-full p-3 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none min-h-[100px] resize-none"
+                                className="w-full p-3 text-xs bg-tertiary border border-border rounded-xl focus:ring-2 focus:ring-(--accent)/20 focus:border-accent transition-all outline-none min-h-[100px] resize-none text-foreground placeholder:text-muted font-medium"
                             />
                             <button
                                 type="submit"
-                                disabled={isSubmittingNote}
-                                className="mt-2 w-full py-2 bg-blue-600 text-white rounded-lg text-sm font-bold shadow-sm hover:bg-blue-700 disabled:bg-blue-300 transition-all flex items-center justify-center gap-2"
+                                disabled={isSubmittingNote || !noteContent.trim()}
+                                className="mt-2 w-full py-2.5 bg-accent text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-md"
+                                style={{ boxShadow: 'var(--shadow-accent)' }}
                             >
-                                {isSubmittingNote ? <span className="animate-spin text-lg">◌</span> : <Plus className="w-4 h-4" />}
+                                {isSubmittingNote
+                                    ? <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                    : <Plus className="w-3.5 h-3.5" />}
                                 Guardar Nota
                             </button>
                         </form>
 
-                        {/* Notes List */}
-                        <div className="space-y-4">
-                            <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mb-1">Notas Recientes</h4>
+                        <div className="space-y-3">
+                            <h4 className="text-[9px] font-black text-muted uppercase tracking-[0.25em]">Notas Recientes</h4>
                             {contact.contactNotes && contact.contactNotes.length > 0 ? (
                                 contact.contactNotes.map((note) => (
-                                    <div key={note.id} className="p-4 bg-yellow-50/50 border border-yellow-100 rounded-xl">
-                                        <p className="text-sm text-gray-800 mb-2 leading-relaxed">{note.content}</p>
-                                        <div className="flex justify-between items-center border-t border-yellow-100 pt-2">
-                                            <span className="text-[10px] font-bold text-yellow-700 uppercase">{note.createdBy || 'Agente'}</span>
-                                            <span className="text-[10px] text-gray-400">{format(new Date(note.createdAt), "dd/MM HH:mm")}</span>
+                                    <div key={note.id} className="p-3.5 bg-elevated border border-border rounded-xl hover:border-(--accent-soft) transition-colors">
+                                        <p className="text-xs text-(--text-secondary) mb-2.5 leading-relaxed font-medium">{note.content}</p>
+                                        <div className="flex justify-between items-center border-t border-border-secondary pt-2">
+                                            <div className="flex items-center gap-1.5">
+                                                <div className="w-4 h-4 rounded bg-(--accent-soft) flex items-center justify-center">
+                                                    <User className="w-2.5 h-2.5 text-accent" />
+                                                </div>
+                                                <span className="text-[9px] font-black text-foreground uppercase">{note.createdBy || 'Agente'}</span>
+                                            </div>
+                                            <span className="text-[9px] text-muted font-medium">
+                                                {format(new Date(note.createdAt), "dd/MM HH:mm")}
+                                            </span>
                                         </div>
                                     </div>
                                 ))
                             ) : (
-                                <div className="text-center py-10 opacity-30">
-                                    <AlignLeft className="w-10 h-10 mx-auto mb-2" />
-                                    <p className="text-xs">No hay notas registradas</p>
+                                <div className="text-center py-12 opacity-30">
+                                    <AlignLeft className="w-8 h-8 mx-auto mb-2 text-muted" />
+                                    <p className="text-xs font-bold text-muted uppercase tracking-wider">Sin notas</p>
                                 </div>
                             )}
                         </div>
@@ -174,27 +193,28 @@ export const ContactInfo: React.FC<ContactInfoProps> = ({ conversation, onClose,
                 )}
 
                 {activeTab === 'history' && (
-                    <div className="space-y-4">
-                        <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mb-4">Línea de Tiempo</h4>
-
-                        <div className="relative pl-6 space-y-6 before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-0.5 before:bg-blue-100">
+                    <div className="space-y-4 animate-fade-in">
+                        <h4 className="text-[9px] font-black text-muted uppercase tracking-[0.25em] mb-4">Línea de Tiempo</h4>
+                        <div className="relative pl-6 space-y-5 before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-px before:bg-linear-to-b before:from-accent before:to-border">
                             <div className="relative">
-                                <div className="absolute -left-7 top-1 w-3 h-3 rounded-full bg-blue-500 border-2 border-white ring-4 ring-blue-50" />
-                                <div className="p-3 bg-white border border-gray-100 rounded-xl shadow-sm">
-                                    <p className="text-xs font-bold text-gray-800">Chat Actual</p>
+                                <div className="absolute -left-[19px] top-1 w-3.5 h-3.5 rounded-full bg-accent border-2 border-background" />
+                                <div className="p-3 bg-elevated border border-(--accent-soft) rounded-xl">
+                                    <p className="text-xs font-bold text-foreground">Chat Actual</p>
                                     <div className="flex justify-between items-center mt-1">
-                                        <span className="text-[10px] text-green-600 font-bold uppercase">{conversation.status}</span>
-                                        <span className="text-[10px] text-gray-400 font-medium">{format(new Date(conversation.lastMessageAt), "dd/MM HH:mm")}</span>
+                                        <span className="text-[9px] text-success font-black uppercase bg-green-500/10 px-2 py-0.5 rounded">
+                                            {conversation.status}
+                                        </span>
+                                        <span className="text-[9px] text-muted font-medium">
+                                            {format(new Date(conversation.lastMessageAt), "dd/MM HH:mm")}
+                                        </span>
                                     </div>
                                 </div>
                             </div>
-
-                            {/* Timeline items simulation if history exists */}
-                            <div className="relative opacity-50">
-                                <div className="absolute -left-7 top-1 w-3 h-3 rounded-full bg-gray-300 border-2 border-white" />
-                                <div className="p-3 bg-gray-50 border border-transparent rounded-xl">
-                                    <p className="text-xs font-medium text-gray-500">Conversación finalizada</p>
-                                    <p className="text-[10px] text-gray-400 mt-1">12 de Feb, 2024</p>
+                            <div className="relative opacity-40">
+                                <div className="absolute -left-[19px] top-1 w-3.5 h-3.5 rounded-full bg-muted border-2 border-background" />
+                                <div className="p-3 bg-tertiary rounded-xl border border-transparent">
+                                    <p className="text-xs font-medium text-muted">Conversación finalizada</p>
+                                    <p className="text-[9px] text-muted mt-1">12 de Feb, 2024</p>
                                 </div>
                             </div>
                         </div>
@@ -202,12 +222,12 @@ export const ContactInfo: React.FC<ContactInfoProps> = ({ conversation, onClose,
                 )}
             </div>
 
-            {/* Footer Actions */}
-            <div className="p-4 bg-gray-50 border-t border-gray-100">
-                <button className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-bold text-red-600 hover:bg-red-50 rounded-lg transition-all">
+            {/* Footer */}
+            <footer className="p-4 bg-(--sidebar-header) border-t border-border">
+                <button className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-bold text-error hover:bg-red-500/10 rounded-xl transition-all border border-transparent hover:border-red-500/20 uppercase tracking-wider">
                     Bloquear Contacto
                 </button>
-            </div>
+            </footer>
         </div>
     );
 };
