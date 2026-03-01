@@ -122,6 +122,16 @@ export const useConversations = () => {
         setActiveConversation(conversation);
         activeConvIdRef.current = conversation.id;
         fetchMessages(conversation.id);
+
+        // Si la conversación está 'unread', marcarla como 'open' automáticamente
+        if (conversation.status === 'unread') {
+            changeStatus(conversation.id, 'open');
+            // Optimistic update local
+            setConversations(prev => prev.map(c =>
+                c.id === conversation.id ? { ...c, status: 'open' as const } : c
+            ));
+            setActiveConversation(prev => prev ? { ...prev, status: 'open' as const } : prev);
+        }
     };
 
     // Supabase Realtime: Escuchar nuevos mensajes y actualizaciones
@@ -231,22 +241,29 @@ export const useConversations = () => {
                     const updatedConversation = payload.new as any;
                     const conversationId = updatedConversation.id;
                     const botEnabled = updatedConversation.botEnabled ?? updatedConversation.botenabled ?? updatedConversation.bot_enabled;
+                    const status = updatedConversation.status;
 
                     if (!conversationId) return;
 
                     if (activeConvIdRef.current === conversationId) {
                         setActiveConversation((prev) => {
-                            if (prev && prev.botEnabled !== botEnabled) {
-                                return { ...prev, botEnabled };
-                            }
+                            if (!prev) return prev;
+                            const updates: Partial<Conversation> = {};
+                            if (botEnabled !== undefined && prev.botEnabled !== botEnabled) updates.botEnabled = botEnabled;
+                            if (status && prev.status !== status) updates.status = status;
+                            if (Object.keys(updates).length > 0) return { ...prev, ...updates };
                             return prev;
                         });
                     }
 
                     setConversations((prev) =>
-                        prev.map((c) =>
-                            c.id === conversationId ? { ...c, botEnabled } : c
-                        )
+                        prev.map((c) => {
+                            if (c.id !== conversationId) return c;
+                            const updates: Partial<Conversation> = {};
+                            if (botEnabled !== undefined) updates.botEnabled = botEnabled;
+                            if (status) updates.status = status;
+                            return { ...c, ...updates };
+                        })
                     );
                 }
             )
@@ -268,10 +285,12 @@ export const useConversations = () => {
                         setActiveConversation(prev => prev ? { ...prev, status: data.status } : prev);
                     }
                 } else if (type === 'new_message') {
-                    // Solo actualizamos el status a unread si no es la activa
-                    setConversations(prev => prev.map(c =>
-                        c.id === id ? { ...c, status: 'unread' } : c
-                    ));
+                    // Solo actualizamos el status a unread si NO es la conversación activa
+                    if (activeConvIdRef.current !== id) {
+                        setConversations(prev => prev.map(c =>
+                            c.id === id ? { ...c, status: 'unread' } : c
+                        ));
+                    }
                 } else if (type === 'label_added') {
                     setConversations(prev => prev.map(c => {
                         if (c.id === id) {
@@ -312,6 +331,74 @@ export const useConversations = () => {
                         } : null);
                     }
                 }
+            });
+
+            // Listener para actualizaciones de estado de mensajes (ticks de entrega)
+            socketRef.current.on('message:status', (data: any) => {
+                const { messageId, status } = data;
+                if (!messageId) return;
+
+                // Actualizar en la lista de mensajes de la conversación activa
+                setMessages((prev) => {
+                    const newMessages = prev.map((m) => (m.id === messageId ? { ...m, status } : m));
+                    // También actualizar activeConversation para forzar re-render
+                    setActiveConversation(curr => curr ? { ...curr, messages: newMessages } : curr);
+                    return newMessages;
+                });
+
+                // Actualizar preview en la lista de conversaciones
+                setConversations((prev) =>
+                    prev.map((c) => {
+                        if (c.messages && c.messages[0]?.id === messageId) {
+                            return { ...c, messages: [{ ...c.messages[0], status }] };
+                        }
+                        return c;
+                    })
+                );
+            });
+
+            // Listener para nuevos mensajes enviados por el agente (outbound)
+            socketRef.current.on('message:new', (data: any) => {
+                const { conversationId: convId, message } = data;
+                if (!convId || !message) return;
+
+                const mappedMessage: Message = {
+                    id: message.id,
+                    conversationId: convId,
+                    content: message.content,
+                    type: message.type || 'text',
+                    direction: message.direction,
+                    status: message.status || 'sent',
+                    timestamp: message.timestamp || new Date().toISOString(),
+                    mediaUrl: message.mediaUrl || null,
+                };
+
+                // Solo agregar a los mensajes de la conversación activa
+                if (activeConvIdRef.current === convId) {
+                    setMessages((prev) => {
+                        if (prev.some(m => m.id === mappedMessage.id)) return prev;
+                        const newMessages = [...prev, mappedMessage];
+                        setActiveConversation(curr => curr ? { ...curr, messages: newMessages } : curr);
+                        return newMessages;
+                    });
+                }
+
+                // Actualizar preview y ordenar en la lista lateral
+                setConversations((prev) => {
+                    const updatedList = prev.map((c) => {
+                        if (c.id === convId) {
+                            return {
+                                ...c,
+                                lastMessageAt: mappedMessage.timestamp,
+                                messages: [mappedMessage],
+                            };
+                        }
+                        return c;
+                    });
+                    return updatedList.sort(
+                        (a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()
+                    );
+                });
             });
         }
 
